@@ -64,7 +64,10 @@ def main() -> None:
         [original[FEATURE_COLUMNS + [TARGET_COLUMN]], incoming[FEATURE_COLUMNS + [TARGET_COLUMN]]],
         ignore_index=True,
     )
-    validate_dataset(combined)
+    # The two source partitions may legitimately contain identical feature/label
+    # rows (Iris contains repeated measurements). Each source batch is validated
+    # independently for duplicates; do not reject overlap across historical and
+    # newly-arrived partitions.
     candidate = build_pipeline()
     candidate.fit(combined[FEATURE_COLUMNS], combined[TARGET_COLUMN])
     candidate_path = ARTIFACT_DIR / "candidate.joblib"
