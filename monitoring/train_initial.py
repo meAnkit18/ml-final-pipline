@@ -40,7 +40,7 @@ def main() -> None:
             key: metrics[key]
             for key in ("accuracy", "precision_macro", "recall_macro", "f1_macro")
         })
-        mlflow.sklearn.log_model(model, name="iris-champion")
+        mlflow.sklearn.log_model(\n            model,\n            name="iris-champion",\n            skops_trusted_types=["numpy.dtype", "sklearn.tree._tree.Tree"],\n        )
         print(f"MLflow run ID: {run.info.run_id}")
 
     print("Baseline champion trained and saved:", MODEL_DIR / "champion.joblib")
