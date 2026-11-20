@@ -38,12 +38,12 @@ Python 3.10+ is recommended.
 python -m venv .venv
 # Windows PowerShell: .venv\Scripts\Activate.ps1
 # macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-monitoring.txt
 
 # Task A: create the two CSV files
 python -m monitoring.prepare_data
 
-# Start MLflow tracking server in another terminal (optional but enabled by default)
+# Start MLflow tracking server in another terminal
 mlflow server --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./mlartifacts --host 127.0.0.1 --port 6001
 
 # Create initial champion artifact and tracked baseline
@@ -91,7 +91,7 @@ python -m json.tool reports/evaluation_report.json
 
 ## Notes
 
-The 30-row incoming batch is a reproducible demonstration batch, not a claim
+The repository's pre-existing `models/iris_model.joblib` is an older standalone estimator and is not the champion artifact expected by this monitoring extension. Create a champion pipeline with the baseline-training command below before running monitoring.\n\nThe 30-row incoming batch is a reproducible demonstration batch, not a claim
 that these records arrived from a live production stream. For a real deployment,
 replace `data/incoming_batch.csv` with a new, independently labelled batch
 using the same four feature columns and target encoding (0=setosa, 1=versicolor,
