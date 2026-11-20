@@ -1,3 +1,12 @@
-__pycache__
-.DSStore
-.pytest_cache
+__pycache__/
+.DS_Store
+.pytest_cache/
+.venv/
+venv/
+mlruns/
+mlartifacts/
+mlflow.db
+data/*.csv
+artifacts/*.joblib
+reports/*.json
+models/champion*.joblib

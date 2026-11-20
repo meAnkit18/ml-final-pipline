@@ -1,0 +1,98 @@
+name: MLOps Monitoring and Retraining Practical
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/model-monitoring-retraining
+    paths:
+      - "monitoring/**"
+      - "tests/test_monitoring.py"
+      - "requirements-monitoring.txt"
+      - ".github/workflows/model-monitoring.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "monitoring/**"
+      - "tests/test_monitoring.py"
+      - "requirements-monitoring.txt"
+      - ".github/workflows/model-monitoring.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  monitoring-practical:
+    name: Run monitoring, retraining and quality gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-monitoring.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-monitoring.txt
+
+      - name: Prepare original and incoming labelled datasets
+        run: python -m monitoring.prepare_data
+
+      - name: Start MLflow tracking server
+        run: |
+          nohup mlflow server \
+            --backend-store-uri sqlite:///mlflow.db \
+            --default-artifact-root ./mlartifacts \
+            --host 127.0.0.1 \
+            --port 6001 > mlflow-server.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:6001/health > /dev/null; then
+              echo "MLflow server is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          cat mlflow-server.log
+          exit 1
+
+      - name: Train and track baseline champion
+        run: python -m monitoring.train_initial
+        env:
+          MLFLOW_TRACKING_URI: http://127.0.0.1:6001
+
+      - name: Evaluate champion, retrain candidate and apply quality gate
+        run: python -m monitoring.run_workflow --tracking-uri http://127.0.0.1:6001
+
+      - name: Run monitoring unit tests
+        run: python -m pytest tests/test_monitoring.py -v
+
+      - name: Validate output artifacts
+        run: |
+          test -s models/champion.joblib
+          test -s artifacts/candidate.joblib
+          test -s reports/evaluation_report.json
+          python -m json.tool reports/evaluation_report.json
+          echo "All required evidence files exist."
+
+      - name: Upload assessment evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mlops-monitoring-assessment-evidence
+          path: |
+            reports/
+            artifacts/
+            models/champion.joblib
+            data/original_train.csv
+            data/incoming_batch.csv
+            mlflow-server.log
+          if-no-files-found: warn
+          retention-days: 14
