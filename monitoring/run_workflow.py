@@ -118,7 +118,7 @@ def main() -> None:
         })
         mlflow.log_artifact(str(report_path))
         mlflow.log_artifact(str(candidate_path))
-        mlflow.sklearn.log_model(candidate, name="candidate-model")
+        mlflow.sklearn.log_model(\n            candidate,\n            name="candidate-model",\n            skops_trusted_types=["numpy.dtype", "sklearn.tree._tree.Tree"],\n        )
         mlflow.set_tag("quality_gate_decision", decision["decision"])
         mlflow.set_tag("candidate_eligible", str(eligible).lower())
         decision["mlflow_run_id"] = run.info.run_id
