@@ -1,7 +1,6 @@
 """Train the first local champion when the repository has no compatible artifact."""
 from monitoring.config import MODEL_DIR, DATA_DIR, FEATURE_COLUMNS, TARGET_COLUMN
 from monitoring.pipeline import build_pipeline, load_csv, save_model, validate_dataset
-from monitoring.run_workflow import calculate_metrics
 
 import mlflow
 import mlflow.sklearn
@@ -19,10 +18,14 @@ def main() -> None:
     model = build_pipeline()
     model.fit(X_train, y_train)
     # Use the untouched holdout only for baseline validation.
-    import pandas as pd
-    holdout = X_test.copy()
-    holdout[TARGET_COLUMN] = y_test
-    metrics = calculate_metrics(model, holdout)
+    from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+    predictions = model.predict(X_test)
+    metrics = {
+        "accuracy": accuracy_score(y_test, predictions),
+        "precision_macro": precision_score(y_test, predictions, average="macro", zero_division=0),
+        "recall_macro": recall_score(y_test, predictions, average="macro", zero_division=0),
+        "f1_macro": f1_score(y_test, predictions, average="macro", zero_division=0),
+    }
 
     save_model(model, MODEL_DIR / "champion.joblib")
     mlflow.set_experiment("iris-model-monitoring")
