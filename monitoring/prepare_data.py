@@ -1,11 +1,12 @@
-"""Create a deterministic labelled incoming batch from the Iris dataset.
+"""Create a reproducible incoming batch balanced across all Iris classes.
 
-The first 120 Iris rows represent the original training corpus. The remaining
-30 rows are treated as a later incoming labelled batch for this practical.
-This gives the demonstration a reproducible, held-out monitoring dataset.
+The dataset is stratified by class before splitting: each class contributes
+40 historical rows and 10 incoming labelled rows. The new batch therefore
+contains 30 rows with class labels 0, 1 and 2 represented equally.
 """
 import pandas as pd
 from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
 
 from monitoring.config import DATA_DIR, FEATURE_COLUMNS, TARGET_COLUMN
 
@@ -21,10 +22,20 @@ def main() -> None:
             "target": TARGET_COLUMN,
         }
     )
-    # Stable split: the new batch is separate from the original training rows.
-    original = frame.iloc[:120].copy()
-    incoming = frame.iloc[120:].copy()
-    incoming.insert(0, "record_id", [f"iris-new-{i:03d}" for i in range(1, len(incoming) + 1)])
+
+    original, incoming = train_test_split(
+        frame,
+        test_size=0.2,
+        random_state=42,
+        stratify=frame[TARGET_COLUMN],
+    )
+    incoming = incoming.copy().reset_index(drop=True)
+    original = original.copy().reset_index(drop=True)
+    incoming.insert(
+        0,
+        "record_id",
+        [f"iris-new-{i:03d}" for i in range(1, len(incoming) + 1)],
+    )
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     original[FEATURE_COLUMNS + [TARGET_COLUMN]].to_csv(
